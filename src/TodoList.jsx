@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const Filter = {
   ALL: "all",
@@ -7,7 +7,6 @@ const Filter = {
 };
 
 const AddTodo = ( { addTodo }) => {
-
   const handleKeyPress = (event) => {
     if (event.key === "Enter") {
       const input = event.target;
@@ -69,7 +68,6 @@ const TodoFilter = ({ currentFilter, setFilter }) => {
 };
 
 const TodoItem = ({ todo, markTodoAsDone, markTodoAsUndone }) => {
-  
   const handleClick = () => {
     todo.done ? markTodoAsUndone(todo.id) : markTodoAsDone(todo.id)
   }
@@ -99,26 +97,80 @@ const TodoItem = ({ todo, markTodoAsDone, markTodoAsUndone }) => {
 const TodoList = () => {
   const [todos, setTodos] = useState([]);
   const [currentFilter, setCurrentFilter] = useState(Filter.ALL);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const addTodo = (text) => {
-    const newTodo = { id: crypto.randomUUID(), text, done: false };
-    setTodos((prevTodos) => [...prevTodos, newTodo]);
-  }
+  useEffect(() => {
+    const fetchTodos = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/todos");
+        if (!response.ok) {
+          throw new Error("Erro ao buscar os dados");
+        }
+        const data = await response.json();
+        setTodos(data);
+      } catch (error) {
+        console.error("Erro ao buscar os dados:", error);
+        setError("Falha ao carregar tarefas");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTodos();
+  }, []);
 
-  const markTodoAsDone = (id) => {
-    setTodos((prevTodos) =>
-      prevTodos.map((todo) =>
-        todo.id === id ? { ...todo, done: true } : todo
-      )
-    )
-  }
+  const addTodo = async (text) => {
+    try {
+      const newTodo = { id: crypto.randomUUID(), text, done: false };
 
-  const markTodoAsUndone = (id) => {
-    setTodos((prevTodos) => 
-      prevTodos.map((todo) => 
-        todo.id === id ? { ...todo, done: false } : todo)
-    )
-  }
+      const response = await fetch("http://localhost:3000/todos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newTodo),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao adicionar tarefa");
+      }
+
+      const createdTodo = await response.json();
+      setTodos((prevTodos) => [...prevTodos, createdTodo]);
+    } catch (error) {
+      console.error("Erro ao adicionar tarefa:", error);
+      setError("Falha ao adicionar tarefa");
+    }
+  };
+
+  const updateTodoStatus = async (id, done) => {
+    try {
+      const response = await fetch(`http://localhost:3000/todos/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ done }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao atualizar tarefa");
+      }
+
+      setTodos((prevTodos) =>
+        prevTodos.map((todo) =>
+          todo.id === id ? { ...todo, done } : todo
+        )
+      );
+    } catch (error) {
+      console.error("Erro ao atualizar tarefa:", error);
+      setError("Falha ao atualizar tarefa");
+    }
+  };
+
+  const markTodoAsDone = (id) => {updateTodoStatus(id, true)};
+
+  const markTodoAsUndone = (id) => {updateTodoStatus(id, false)};
 
   const filteredTodos = todos.filter(todo => {
     if (currentFilter === Filter.ALL) return true
@@ -126,6 +178,14 @@ const TodoList = () => {
     if (currentFilter === Filter.PENDING) return !todo.done
     return true
   })
+
+  if (isLoading) {
+    return <div className="center-content">Carregando...</div>;
+  }
+
+  if (error) {
+    return <div className="center-content">{error}</div>;
+  }
 
   return (
     <>
