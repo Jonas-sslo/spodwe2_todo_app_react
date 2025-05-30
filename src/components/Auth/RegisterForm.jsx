@@ -23,7 +23,7 @@ const RegisterForm = () => {
 
   return (
     <div className="container">
-      <h1>Register</h1>
+      <h1>Cadastro</h1>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       <form onSubmit={handleSubmit}>
         <div>
@@ -38,7 +38,7 @@ const RegisterForm = () => {
         <div>
           <input
             type="email"
-            placeholder="Email"
+            placeholder="E-mail"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
